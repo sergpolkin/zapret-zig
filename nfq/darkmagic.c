@@ -74,6 +74,11 @@ bool tcp_has_fastopen(const struct tcphdr *tcp)
 	return opt && opt[1]>=4 && opt[2]==0xF9 && opt[3]==0x89;
 }
 
+static void write_mem32(void* dst, uint32_t value) {
+    uint8_t* ptr = (uint8_t*)dst;
+    memcpy(ptr, &value, 4);
+}
+
 // n prefix (nsport, nwsize) means network byte order
 static void fill_tcphdr(
 	struct tcphdr *tcp, uint32_t fooling, uint8_t tcp_flags,
@@ -110,10 +115,10 @@ static void fill_tcphdr(
 	{
 		tcpopt[0] = 19; // kind
 		tcpopt[1] = 18; // len
-		*(uint32_t*)(tcpopt+2)=random();
-		*(uint32_t*)(tcpopt+6)=random();
-		*(uint32_t*)(tcpopt+10)=random();
-		*(uint32_t*)(tcpopt+14)=random();
+		write_mem32(tcpopt + 2, random());
+		write_mem32(tcpopt + 6, random());
+		write_mem32(tcpopt + 10, random());
+		write_mem32(tcpopt + 14, random());
 		t=18;
 	}
 	if (timestamps || (fooling & FOOL_TS))
@@ -121,8 +126,8 @@ static void fill_tcphdr(
 		tcpopt[t] = 8; // kind
 		tcpopt[t+1] = 10; // len
 		// forge only TSecr if orig timestamp is present
-		*(uint32_t*)(tcpopt+t+2) = timestamps ? timestamps[0] : -1;
-		*(uint32_t*)(tcpopt+t+6) = (timestamps && !(fooling & FOOL_TS)) ? timestamps[1] : -1;
+		write_mem32(tcpopt + t + 2, timestamps ? timestamps[0] : -1);
+		write_mem32(tcpopt + t + 6, (timestamps && !(fooling & FOOL_TS)) ? timestamps[1] : -1);
 		t+=10;
 	}
 	if (scale_factor!=SCALE_NONE)
